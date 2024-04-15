@@ -6,12 +6,12 @@ class CIDR4:
         self.ip_str, len = cidr.split('/')
         self.netmask_int = int(len)
         self.ip_list = [ int(x) for x in self.ip_str.split('.') ]
-        self.netmask_list = self.get_netmask_list()
+        self.netmask_list = self.get_netmask()
         self.ip1_list = [ x & y for x, y in zip(self.ip_list, self.netmask_list)]
         self.ip2_list = [ x | y for x, y in zip(self.ip_list, self.netmask_list)]
 
-    def get_netmask_list(self):
-        netmask = list()
+    def get_netmask(self) -> list:
+        netmask_list = list()
         for i in range(4):
             x = 0
             for j in range(8):
@@ -19,17 +19,18 @@ class CIDR4:
                 if self.netmask_int > 0:
                     self.netmask_int -= 1
                     x |= 1
-            netmask.append(x)
-        return netmask
+            netmask_list.append(x)
+        return netmask_list
     
-    def merge_ip(self, cidr):
+    def merge_ip(self, cidr) -> str:
         if isinstance(cidr, str):
             return self.merge_ip(CIDR4(cidr))
         else: # isinstance(cidr, CIDR4)
-            merged_ip = [ x | (y ^ z) for x, y, z in zip(self.ip1_list, cidr.ip2_list, cidr.netmask_list) ]
-            return merged_ip
+            merged_ip_str_list = [ str(x | y ^ z) for x, y, z in zip(self.ip1_list, cidr.ip2_list, cidr.netmask_list) ]
+            merged_ip_str = '.'.join(merged_ip_str_list)
+            return merged_ip_str
 
-# debug = True
+debug = True
 
 local_cidr = '192.168.0.164/24'
 

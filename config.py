@@ -13,7 +13,7 @@ wifi_config = [
 
 def wifi_connect():
     # 连接wifi
-    global wifi_config
+    global wifi_config, local_cidr
     sleep(1)
     wlan = network.WLAN(network.STA_IF)
     wlan.active(False)
@@ -27,7 +27,9 @@ def wifi_connect():
             while wlan.status() == network.STAT_CONNECTING: pass
         except Exception: pass
         if wlan.isconnected():
-            print('网络配置:', wlan.ifconfig())
+            ifconfig = wlan.ifconfig()
+            print('网络配置:', ifconfig)
+            local_cidr = '/'.join(ifconfig[0], ifconfig[1])
             # wifi_config[0] = (essid, password)
             del wifi_config
             return wlan
