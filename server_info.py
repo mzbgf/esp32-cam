@@ -1,34 +1,60 @@
-import requests
+import requests, time
 
-server_cidr = '192.168.31.11/24'
-server_port = 9999
+class CIDR4:
+    def __init__(self, cidr: str) -> None:
+        self.cidr = cidr
+        self.ip_str, len = cidr.split('/')
+        self.netmask_int = int(len)
+        self.ip_list = [ int(x) for x in self.ip_str.split('.') ]
+        self.netmask_list = self.get_netmask_list()
+        self.ip1_list = [ x & y for x, y in zip(self.ip_list, self.netmask_list)]
+        self.ip2_list = [ x | y for x, y in zip(self.ip_list, self.netmask_list)]
+
+    def get_netmask_list(self):
+        netmask = list()
+        for i in range(4):
+            x = 0
+            for j in range(8):
+                x <<= 1
+                if self.netmask_int > 0:
+                    self.netmask_int -= 1
+                    x |= 1
+            netmask.append(x)
+        return netmask
+    
+    def merge_ip(self, cidr):
+        if isinstance(cidr, str):
+            return self.merge_ip(CIDR4(cidr))
+        else: # isinstance(cidr, CIDR4)
+            merged_ip = [ x | (y ^ z) for x, y, z in zip(self.ip1_list, cidr.ip2_list, cidr.netmask_list) ]
+            return merged_ip
+
+# debug = True
 
 local_cidr = '192.168.0.164/24'
 
-def get_netmask_4(length = 0):
-    netmask = list()
-    for i in range(4):
-        x = 0
-        for j in range(8):
-            x <<= 1
-            if length > 0:
-                length -= 1
-                x |= 1
-        netmask.append(x)
-    return netmask
+if locals().get('debug'):
+    print('debug mode')
+    server_info = {
+        "type": "tcp",
+        "cidr": "192.168.31.11/24",
+        "port": 9999
+    }
+else:
+    api_url = "https://mirror.ghproxy.com/https://raw.githubusercontent.com/mzbgf/esp32-cam/main/api"
+    while True:
+        req = requests.get(api_url + "/static/server_info.json")
+        if req.ok:
+            break
+        time.sleep(1)
+    server_info = req.json()
 
-local_ip, local_len = local_cidr.split('/')
-local_ip = [ int(x) for x in local_ip.split('.') ]
-local_netmask = get_netmask_4(int(local_len))
-ip1 = [ x & y for x, y in zip(local_ip, local_netmask) ]
+server_type = server_info['type']
+server_cidr = server_info['cidr']
+server_port = server_info['port']
 
-server_ip, server_len = server_cidr.split('/')
-server_ip = [ int(x) for x in server_ip.split('.') ]
-server_netmask = get_netmask_4(int(server_len))
-ip2 = [ x | y for x, y in zip(server_ip, server_netmask) ]
+local_server_ip = CIDR4(local_cidr).merge_ip(server_cidr)
 
-local_server_ip = [ x | y ^ z for x, y, z in zip(ip1, ip2, server_netmask) ]
-
-print(server_ip)
-print(local_ip)
+print(server_info)
+print('local_cidr: ', local_cidr)
 print(local_server_ip)
